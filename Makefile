@@ -1,3 +1,5 @@
+include test.mk
+
 coverage:
 	go test -v ./... -covermode=count -coverprofile=coverage.out
 
