@@ -39,6 +39,7 @@ func NewBackupCommand() *cobra.Command {
 		},
 	}
 
+	command.Flags().StringVarP(&app.Template, "template", "t", "", "Template name e.g. 'postgres', 'mysql', 'gitea', 'redis', 'files', 'wordpress'")
 	command.Flags().StringVarP(&app.DefinitionFile, "definition", "d", "./rkc-backup.yaml", "Backup & Restore definition in YAML format, see reference in docs")
 	command.Flags().BoolVarP(&app.IsKubernetes, "kubernetes", "k", false, "Generate output in Kubernetes manifests format")
 	command.Flags().StringVarP(&app.KeyPath, "gpg-key-path", "g", "gpg.key", "Path to the GPG key (private or public, recommended to use public key)")

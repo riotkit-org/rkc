@@ -68,7 +68,7 @@ func (t *Templating) loadTemplate(name string, operation string) ([]byte, string
 		return b, path, err
 	}
 
-	return []byte(""), "", errors.New(fmt.Sprintf("template not found, looked in those paths: %s", strings.Join(paths, ",")))
+	return []byte(""), "", errors.New(fmt.Sprintf("template not found, looked in those paths: %s, use --template/-t to select a template", strings.Join(paths, ",")))
 }
 
 func (t *Templating) LoadVariables(path string) (interface{}, error) {
