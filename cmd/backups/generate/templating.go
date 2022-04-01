@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"html/template"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
+	"text/template"
 )
 
 type Templating struct{}
@@ -22,13 +23,13 @@ type Templating struct{}
 //              Templates in first directory are replaced only if the user has not modified them.
 func (t *Templating) RenderTemplate(name string, operation string, variables interface{}) (string, error) {
 	// load raw template content
-	content, err := t.loadTemplate(name, operation)
+	content, templatePath, err := t.loadTemplate(name, operation)
 	if err != nil {
 		return "", errors.New(fmt.Sprintf("cannot render template: %s", err))
 	}
 
 	// parse
-	tpl := template.New(name)
+	tpl := template.New(name).Option("missingkey=error")
 	parsed, parseErr := tpl.Parse(string(content))
 	if parseErr != nil {
 		return "", errors.New(fmt.Sprintf("cannot render template: %s", err))
@@ -37,7 +38,7 @@ func (t *Templating) RenderTemplate(name string, operation string, variables int
 	// render
 	textBuffer := bytes.NewBufferString("")
 	if err := parsed.Execute(textBuffer, variables); err != nil {
-		return "", errors.New(fmt.Sprintf("cannot render template, execution failed: %s", err))
+		return "", errors.New(fmt.Sprintf("cannot render template, execution failed. Error: %s, Template: %s", err, templatePath))
 	}
 	return textBuffer.String(), nil
 }
@@ -47,7 +48,7 @@ func (t *Templating) RenderTemplate(name string, operation string, variables int
 //              2. ~/.rkc/backups/templates/base/{backup,restore}/{name}.tmpl
 //
 //              Templates in first directory are replaced only if the user has not modified them.
-func (t *Templating) loadTemplate(name string, operation string) ([]byte, error) {
+func (t *Templating) loadTemplate(name string, operation string) ([]byte, string, error) {
 	paths := []string{
 		"./cmd/backups/generate/templates/" + operation + "/" + name + ".tmpl", // only in testing
 		"~/.rkc/backups/templates/" + operation + "/" + name + ".tmpl",
@@ -62,10 +63,30 @@ func (t *Templating) loadTemplate(name string, operation string) ([]byte, error)
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			continue
 		}
-		return ioutil.ReadFile(path)
+
+		b, err := ioutil.ReadFile(path)
+		return b, path, err
 	}
 
-	return []byte(""), errors.New(fmt.Sprintf("template not found, looked in those paths: %s", strings.Join(paths, ",")))
+	return []byte(""), "", errors.New(fmt.Sprintf("template not found, looked in those paths: %s", strings.Join(paths, ",")))
+}
+
+func (t *Templating) LoadVariables(path string) (interface{}, error) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil, errors.New(fmt.Sprintf("cannot find file '%s'", path))
+	}
+
+	content, readErr := ioutil.ReadFile(path)
+	if readErr != nil {
+		return nil, errors.New(fmt.Sprintf("cannot read variables from file: '%s', error: %s", path, readErr))
+	}
+
+	var result interface{}
+	if err := yaml.Unmarshal(content, &result); err != nil {
+		return nil, errors.New(fmt.Sprintf("cannot read variables from file: '%s', error: '%s'", path, err))
+	}
+
+	return result, nil
 }
 
 func expandPath(path string) (string, error) {
