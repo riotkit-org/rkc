@@ -15,14 +15,14 @@ Usage concept
 1. User prepares YAML file as input definition **for both backup & restore**
 
 ```yaml
-params:
+Params:
     hostname: postgres.db.svc.cluster.local
     port: 5432
     db: rkc-test
     user: riotkit
     password: "${DB_PASSWORD}" # injects a shell-syntax, put your password in a `kind: Secret` and mount as environment variable. You can also use $(cat /mnt/secret) syntax, be aware of newlines!
 
-repository:
+Repository:
     url: "https://example.org"
     token: "${BR_TOKEN}"
     encryptionKeyPath: "/var/lib/backup-repository/encryption.key"

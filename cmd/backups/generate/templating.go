@@ -71,7 +71,7 @@ func (t *Templating) loadTemplate(name string, operation string) ([]byte, string
 	return []byte(""), "", errors.New(fmt.Sprintf("template not found, looked in those paths: %s, use --template/-t to select a template", strings.Join(paths, ",")))
 }
 
-func (t *Templating) LoadVariables(path string) (interface{}, error) {
+func (t *Templating) LoadVariables(path string) (map[string]interface{}, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return nil, errors.New(fmt.Sprintf("cannot find file '%s'", path))
 	}
@@ -81,12 +81,29 @@ func (t *Templating) LoadVariables(path string) (interface{}, error) {
 		return nil, errors.New(fmt.Sprintf("cannot read variables from file: '%s', error: %s", path, readErr))
 	}
 
-	var result interface{}
+	var result map[string]interface{}
 	if err := yaml.Unmarshal(content, &result); err != nil {
 		return nil, errors.New(fmt.Sprintf("cannot read variables from file: '%s', error: '%s'", path, err))
 	}
 
 	return result, nil
+}
+
+// loadHelmValuesOverride should be called always after LoadVariables()
+func (t *Templating) loadHelmValuesOverride(path string) (map[interface{}]interface{}, error) {
+	content, _ := ioutil.ReadFile(path)
+
+	var result map[interface{}]interface{}
+	if err := yaml.Unmarshal(content, &result); err != nil {
+		return map[interface{}]interface{}{}, errors.New(fmt.Sprintf("cannot read variables from file: '%s', error: '%s'", path, err))
+	}
+
+	// no ".HelmValues" defined
+	if _, ok := result["HelmValues"]; !ok {
+		return map[interface{}]interface{}{}, nil
+	}
+
+	return result["HelmValues"].(map[interface{}]interface{}), nil
 }
 
 func expandPath(path string) (string, error) {
