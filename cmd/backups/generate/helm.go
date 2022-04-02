@@ -16,7 +16,7 @@ import (
 func (t *Templating) RenderChart(script string, gpgKeyContent string, schedule string, jobName string, image string,
 	valuesOverride map[interface{}]interface{}, namespace string) (string, error) {
 
-	templatesDir := "cmd/backups/generate/chart/templates" // todo parametrize
+	templatesDir := t.buildTemplatesDir()
 	templates, templatesLoadErr := t.loadChartFiles(templatesDir)
 	if templatesLoadErr != nil {
 		return "", errors.Wrap(templatesLoadErr, "Cannot render Chart")
@@ -133,6 +133,10 @@ func (t *Templating) validateSealedSecret(secretContent string, namespace string
 	}
 
 	return result.Metadata.Name, nil
+}
+
+func (t *Templating) buildTemplatesDir() string {
+	return "cmd/backups/generate/chart/templates"
 }
 
 func processVariablesLocally(envs map[interface{}]interface{}) (map[interface{}]interface{}, error) {
