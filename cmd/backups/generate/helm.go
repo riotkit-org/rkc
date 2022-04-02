@@ -136,7 +136,24 @@ func (t *Templating) validateSealedSecret(secretContent string, namespace string
 }
 
 func (t *Templating) buildTemplatesDir() string {
-	return "cmd/backups/generate/chart/templates"
+	paths := []string{
+		"./cmd/backups/generate/chart", // only in testing
+		"~/.rkc/backups/helm",
+		"~/.rkc/backups/helm/base",
+	}
+
+	for _, path := range paths {
+		path, expandErr := expandPath(path)
+		if expandErr != nil {
+			logrus.Warnf("Cannot expand path: %s", path)
+		}
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			continue
+		}
+		return path
+	}
+
+	return ""
 }
 
 func processVariablesLocally(envs map[interface{}]interface{}) (map[interface{}]interface{}, error) {

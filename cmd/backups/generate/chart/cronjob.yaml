@@ -20,7 +20,7 @@ spec:
                           envFrom:
                               - secretRef:
                                     name: {{ .Values.name }}
-                              {{- if isGPGSealedSecret }}
+                              {{- if .Values.isGPGSealedSecret }}
                               - secretRef:
                                     name: {{ .Values.sealedSecretName }}
                               {{- end }}
