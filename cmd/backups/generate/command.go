@@ -16,6 +16,7 @@ type SnippetGenerationCommand struct {
 	JobName        string
 	Image          string
 	Operation      string
+	Namespace      string
 	// todo: Helm templates path?
 }
 
@@ -48,7 +49,7 @@ func (c *SnippetGenerationCommand) Run() error {
 			return errors.Wrap(err, "cannot read helm values override from yaml file")
 		}
 
-		renderedChart, helmErr := t.RenderChart(rendered, string(gpgKeyContent), c.Schedule, c.JobName, c.Image, helmValuesOverride)
+		renderedChart, helmErr := t.RenderChart(rendered, string(gpgKeyContent), c.Schedule, c.JobName, c.Image, helmValuesOverride, c.Namespace)
 		if helmErr != nil {
 			return helmErr
 		}
@@ -64,7 +65,7 @@ func (c *SnippetGenerationCommand) Run() error {
 	// output format: default/plain
 	writeErr := writeFiles([]targetFile{
 		{Name: c.OutputDir + "/" + c.Operation + ".sh", Content: rendered},
-		{Name: c.OutputDir + "/gpg.key", Content: string(gpgKeyContent)},
+		{Name: c.OutputDir + "/gpg-key", Content: string(gpgKeyContent)},
 	})
 	if writeErr != nil {
 		return errors.Wrap(writeErr, "cannot write files")

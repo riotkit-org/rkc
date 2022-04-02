@@ -3,6 +3,7 @@ package generate
 import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/engine"
 	"io/ioutil"
@@ -12,21 +13,37 @@ import (
 )
 
 // RenderChart Renders YAML files from 'chart/templates' directory combining Helm values from CLI switches and from .HelmValues
-func (t *Templating) RenderChart(script string, gpgKeyContent string, schedule string, jobName string, image string, valuesOverride map[interface{}]interface{}) (string, error) {
+func (t *Templating) RenderChart(script string, gpgKeyContent string, schedule string, jobName string, image string,
+	valuesOverride map[interface{}]interface{}, namespace string) (string, error) {
+
 	templatesDir := "cmd/backups/generate/chart/templates" // todo parametrize
 	templates, templatesLoadErr := t.loadChartFiles(templatesDir)
 	if templatesLoadErr != nil {
 		return "", errors.Wrap(templatesLoadErr, "Cannot render Chart")
 	}
 
+	// support for SealedSecrets in place of GPG key
+	isSealedSecret := strings.Contains(gpgKeyContent, "kind: SealedSecret")
+	saName := ""
+	if isSealedSecret {
+		var saErr error
+		saName, saErr = t.validateSealedSecret(gpgKeyContent, namespace, jobName)
+
+		if saErr != nil {
+			return "", errors.Wrap(saErr, "SealedSecret is invalid")
+		}
+	}
+
 	// Helm values
 	values := map[string]interface{}{
-		"name":          jobName,
-		"scriptContent": script,
-		"gpgKeyContent": gpgKeyContent,
-		"schedule":      schedule,
-		"image":         image,
-		"scriptName":    jobName,
+		"Name":              jobName,
+		"scriptContent":     script,
+		"gpgKeyContent":     gpgKeyContent,
+		"schedule":          schedule,
+		"image":             image,
+		"scriptName":        jobName,
+		"sealedSecretName":  saName,
+		"isGPGSealedSecret": isSealedSecret,
 	}
 	for key, val := range valuesOverride {
 		if key == "env" {
@@ -97,6 +114,27 @@ func (t *Templating) loadChartFiles(templatesDir string) ([]*chart.File, error) 
 	return loaded, nil
 }
 
+func (t *Templating) validateSealedSecret(secretContent string, namespace string, regularSecretName string) (string, error) {
+	logrus.Info("Validating SealedSecret, because provided instead of GPG plain-text key")
+
+	var result sealedSecret
+	if err := yaml.Unmarshal([]byte(secretContent), &result); err != nil {
+		return "", err
+	}
+
+	if result.Spec.EncryptedData.GpgKey == "" {
+		return "", errors.New("missing .Spec.EncryptedData.gpg-key")
+	}
+	if result.Metadata.Namespace != namespace {
+		return "", errors.Errorf("SealedSecret is in different Namespace (%s), expected to be in '%s'", result.Metadata.Namespace, namespace)
+	}
+	if result.Metadata.Name == regularSecretName {
+		return "", errors.Errorf("SealedSecret cannot have .metadata.name same as '%s'", regularSecretName)
+	}
+
+	return result.Metadata.Name, nil
+}
+
 func processVariablesLocally(envs map[interface{}]interface{}) (map[interface{}]interface{}, error) {
 	for key, value := range envs {
 		if strings.Contains(value.(string), "${") || strings.Contains(value.(string), "$(") {
@@ -117,4 +155,22 @@ func evaluateShell(shell string) ([]byte, error) {
 	c := exec.Command("/bin/bash", "-c", "echo -n "+shell)
 	c.Env = os.Environ()
 	return c.Output()
+}
+
+type sealedSecretMetadata struct {
+	Namespace string `yaml:"namespace"`
+	Name      string `yaml:"name"`
+}
+
+type sealedSecretSpec struct {
+	EncryptedData sealedSecretEncryptedData `yaml:"encryptedData"`
+}
+
+type sealedSecretEncryptedData struct {
+	GpgKey string `yaml:"gpg-key"`
+}
+
+type sealedSecret struct {
+	Metadata sealedSecretMetadata `yaml:"metadata"`
+	Spec     sealedSecretSpec     `yaml:"spec"`
 }

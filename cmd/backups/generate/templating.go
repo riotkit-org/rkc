@@ -17,8 +17,8 @@ import (
 type Templating struct{}
 
 // RenderTemplate renders a Go-formatted template in order from (stops on first found):
-//              1. ~/.rkc/backups/templates/{backup,restore}/{name}.tmpl
-//              2. ~/.rkc/backups/templates/base/{backup,restore}/{name}.tmpl
+//              1. ~/.rkc/backups/templates/{backup,restore}/{Name}.tmpl
+//              2. ~/.rkc/backups/templates/base/{backup,restore}/{Name}.tmpl
 //
 //              Templates in first directory are replaced only if the user has not modified them.
 func (t *Templating) RenderTemplate(name string, operation string, variables interface{}) (string, error) {
@@ -44,8 +44,8 @@ func (t *Templating) RenderTemplate(name string, operation string, variables int
 }
 
 // loadTemplate is reading templates in order from (stops on first found):
-//              1. ~/.rkc/backups/templates/{backup,restore}/{name}.tmpl
-//              2. ~/.rkc/backups/templates/base/{backup,restore}/{name}.tmpl
+//              1. ~/.rkc/backups/templates/{backup,restore}/{Name}.tmpl
+//              2. ~/.rkc/backups/templates/base/{backup,restore}/{Name}.tmpl
 //
 //              Templates in first directory are replaced only if the user has not modified them.
 func (t *Templating) loadTemplate(name string, operation string) ([]byte, string, error) {

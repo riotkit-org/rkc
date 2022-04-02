@@ -20,6 +20,10 @@ spec:
                           envFrom:
                               - secretRef:
                                     name: {{ .Values.name }}
+                              {{- if isGPGSealedSecret }}
+                              - secretRef:
+                                    name: {{ .Values.sealedSecretName }}
+                              {{- end }}
                           volumeMounts:
                               - name: data
                                 mountPath: /usr/backup-maker
@@ -31,6 +35,6 @@ spec:
                               name: {{ .Values.name }}
                         - name: secrets
                           configMap:
-                              name: {{ .Values.name }}
+                              name: {{ if .Values.isGPGSealedSecret }}{{ .Values.sealedSecretName }}{{ else }}{{ .Values.name }}{{ end }}
 
                         # todo: Add volumes to values to allow mounting data for copying files
